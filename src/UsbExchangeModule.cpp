@@ -95,7 +95,7 @@ int32_t UsbExchangeModule::mscWrite(uint32_t lba, uint32_t offset, uint8_t* buff
     activity();
     if (!_blockDevice->write(lba, offset, size, buffer))
     {
-        deactivate();
+        eject();
         return -1;
     };
     return size;
@@ -112,14 +112,14 @@ bool UsbExchangeModule::mscStartStop(uint8_t power_condition, bool start, bool l
     (void)power_condition;
 
     activity();
-    if (load_eject && !start) deactivate();
+    if (load_eject && !start) eject();
 
     return true;
 }
 
 bool UsbExchangeModule::mscReady()
 {
-    return _status;
+    return _ready;
 }
 
 const std::string UsbExchangeModule::name()
@@ -144,12 +144,14 @@ void UsbExchangeModule::setup(bool configured)
     logIndentDown();
 
     openknx.progButton.onDoubleClick([]() -> void {
-        openknxUsbExchangeModule.toggleExchangeMode();
+        openknxUsbExchangeModule.toggle();
     });
 }
 
 void UsbExchangeModule::loop(bool configured)
 {
+    processLoading();
+    processEjecting();
 }
 
 void UsbExchangeModule::activity()
@@ -161,72 +163,77 @@ bool UsbExchangeModule::processCommand(const std::string cmd, bool diagnoseKo)
 {
     if (cmd.substr(0, 8) == "exchange")
     {
-        toggleExchangeMode();
-        return true;
-    }
-    if (cmd.substr(0, 11) == "exchange ls")
-    {
-        deactivate();
-        FatVolume vol;
-        vol.begin(_blockDevice);
-        vol.ls(_loggerFat);
+        toggle();
         return true;
     }
     return false;
 }
 
-void UsbExchangeModule::toggleExchangeMode()
+void UsbExchangeModule::toggle()
 {
-    _status ? deactivate() : activate();
+    if (_loading) return;
+    if (_ejecting) return;
+
+    _status ? eject() : load();
 }
 
-void UsbExchangeModule::deactivate()
+void UsbExchangeModule::eject()
 {
-    logInfoP("deactivate");
-    _blockDevice->syncDevice();
-    logIndentUp();
-    logInfoP("copy files");
-    FatVolume vol;
-    vol.begin(_blockDevice);
-    vol.ls(_loggerFat);
-    logIndentDown();
-    openknx.progLed.off();
+    if (!_status) return;
+    if (_loading) return;
+    if (_ejecting) return;
+
+    _ejecting = 1;
     _status = false;
+    // _blockDevice->syncDevice();
+    // logIndentUp();
+    // logInfoP("copy files");
+    // FatVolume vol;
+    // vol.begin(_blockDevice);
+    // vol.ls(_loggerFat);
+    // logIndentDown();
+    // openknx.progLed.off();
+    // _status = false;
 }
 
-void UsbExchangeModule::activate()
+void UsbExchangeModule::load()
 {
-    logInfoP("activate usb storage");
-    logIndentUp();
-    logInfoP("format");
-    logIndentUp();
-
-    // format
-    FatFormatter formatter;
-    uint8_t sectorBuffer[512] = {};
-    formatter.format(_blockDevice, (uint8_t*)sectorBuffer, _loggerFat);
-    logInfoP("format");
-
-    logIndentDown();
-    logInfoP("create info files");
-    FatVolume vol;
-    vol.begin(_blockDevice);
-    FatFile file = vol.open("/Readme.txt", O_WRITE | O_TRUNC | O_CREAT);
-    if (file)
-    {
-        file.write("Test bla bla");
-        file.close();
-    }
-    else
-    {
-        logErrorP("create file failed");
-    }
-    writeSupportFile(vol);
-    _blockDevice->syncDevice();
-
-    logIndentDown();
+    if (_status) return;
+    if (_loading) return;
+    if (_ejecting) return;
+    _loading = 1;
     _status = true;
-    
+
+    // logIndentUp();
+    // logInfoP("format");
+    // logIndentUp();
+
+    // // format
+    // FatFormatter formatter;
+    // uint8_t sectorBuffer[512] = {};
+    // formatter.format(_blockDevice, (uint8_t*)sectorBuffer, _loggerFat);
+    // logInfoP("format");
+
+    // logIndentDown();
+    // logInfoP("create info files");
+    // FatVolume vol;
+    // vol.begin(_blockDevice);
+    // FatFile file = vol.open("/Readme.txt", O_WRITE | O_TRUNC | O_CREAT);
+    // if (file)
+    // {
+    //     file.write("Test bla bla");
+    //     file.close();
+    // }
+    // else
+    // {
+    //     logErrorP("create file failed");
+    // }
+    // writeSupportFile(vol);
+    // _blockDevice->syncDevice();
+
+    // logIndentDown();
+    // _status = true;
+
     openknx.progLed.activity(_activity);
 }
 
@@ -243,6 +250,83 @@ void UsbExchangeModule::writeSupportFile(FatVolume& vol)
         writeLineToFile(file, "%s: %s", openknx.modules.list[i]->name().c_str(), openknx.modules.list[i]->version().c_str());
     }
     file.close();
+}
+
+void UsbExchangeModule::onLoad(std::string filename, FileOnLoadCallback callback)
+{
+    _filesOnLoad.insert({filename, callback});
+}
+
+void UsbExchangeModule::onEject(std::string filename, FileOnLoadCallback callback)
+{
+    _filesOnEject.insert({filename, callback});
+}
+
+void UsbExchangeModule::processEjecting()
+{
+    if (!_ejecting) return;
+    if (_ejecting == 1) logInfoP("Ejecting usb storage");
+    logIndentUp();
+
+    if (_ejecting == 1)
+    {
+        openknx.progLed.pulsing();
+        _ready = false;
+    }
+    else if (_ejecting == 2)
+    {
+        logInfoP("Copy files");
+        _vol.begin(_blockDevice);
+    }
+    else
+    {
+        logInfoP("Ejecting completed");
+        openknx.progLed.off();
+        _ejecting = 0;
+        goto Done;
+    }
+
+    _ejecting++;
+Done:
+    logIndentDown();
+}
+
+void UsbExchangeModule::processLoading()
+{
+    if (!_loading) return;
+    if (_loading == 1) logInfoP("Load usb storage");
+    logIndentUp();
+
+    if (_loading == 1)
+    {
+        openknx.progLed.pulsing();
+        logInfoP("Start formatting");
+        logIndentUp();
+        doFormat();
+        logIndentDown();
+    }
+    else if (_loading == 2)
+    {
+        logInfoP("Copy files");
+    }
+    else
+    {
+        _loading = 0;
+        _ready = true;
+        logInfoP("Loading completed");
+        goto Done;
+    }
+
+    _loading++;
+Done:
+    logIndentDown();
+}
+
+void UsbExchangeModule::doFormat()
+{
+    FatFormatter formatter;
+    uint8_t sectorBuffer[512] = {};
+    formatter.format(_blockDevice, (uint8_t*)sectorBuffer, _loggerFat);
 }
 
 UsbExchangeModule openknxUsbExchangeModule;
