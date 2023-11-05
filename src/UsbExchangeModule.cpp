@@ -143,18 +143,13 @@ void UsbExchangeModule::setup(bool configured)
     _blockDevice = new VirtualBlockDevice("Exchange", &_flash, EXCHANGE_FS_SIZE);
     logIndentDown();
 
-    openknx.progButton.onLongClick([]() -> void {
+    openknx.progButton.onDoubleClick([]() -> void {
         openknxUsbExchangeModule.toggleExchangeMode();
     });
 }
 
 void UsbExchangeModule::loop(bool configured)
 {
-    if (_firstRun)
-    {
-        openknx.progLed.activity(_activity);
-        _firstRun = false;
-    }
 }
 
 void UsbExchangeModule::activity()
@@ -187,7 +182,6 @@ void UsbExchangeModule::toggleExchangeMode()
 
 void UsbExchangeModule::deactivate()
 {
-    openknx.progLed.pulsing();
     logInfoP("deactivate");
     _blockDevice->syncDevice();
     logIndentUp();
@@ -202,7 +196,6 @@ void UsbExchangeModule::deactivate()
 
 void UsbExchangeModule::activate()
 {
-    openknx.progLed.pulsing();
     logInfoP("activate usb storage");
     logIndentUp();
     logInfoP("format");
@@ -232,8 +225,9 @@ void UsbExchangeModule::activate()
     _blockDevice->syncDevice();
 
     logIndentDown();
-    openknx.progLed.off();
     _status = true;
+    
+    openknx.progLed.activity(_activity);
 }
 
 void UsbExchangeModule::writeSupportFile(FatVolume& vol)

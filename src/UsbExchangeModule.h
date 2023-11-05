@@ -25,7 +25,6 @@ class UsbExchangeModule : public OpenKNX::Module
     void toggleExchangeMode();
 
   private:
-    bool _firstRun = true;
     uint32_t _activity = 0;
     bool _status = false;
     VirtualBlockDevice* _blockDevice = nullptr;
