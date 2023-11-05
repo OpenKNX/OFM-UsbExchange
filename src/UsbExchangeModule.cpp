@@ -3,6 +3,18 @@
 #include "class/msc/msc.h"
 #include "class/msc/msc_device.h"
 
+void writeLineToFile(FatFile file, const char* line, ...)
+{
+    char buf[100];
+    memset(buf, 0x0, 100);
+    va_list values;
+    va_start(values, line);
+    vsnprintf(buf, 100, line, values);
+    file.write(buf);
+    file.write("\n\r");
+    va_end(values);
+}
+
 // Activate
 void __USBInstallMassStorage() {}
 
@@ -117,7 +129,7 @@ const std::string UsbExchangeModule::name()
 
 const std::string UsbExchangeModule::version()
 {
-    return MODULE_UsbExchangeModule_Version;
+    return MODULE_UsbExchange_Version;
 }
 
 void UsbExchangeModule::setup(bool configured)
@@ -206,7 +218,6 @@ void UsbExchangeModule::activate()
     logInfoP("create info files");
     FatVolume vol;
     vol.begin(_blockDevice);
-    vol.mkdir("/Test");
     FatFile file = vol.open("/Readme.txt", O_WRITE | O_TRUNC | O_CREAT);
     if (file)
     {
@@ -217,11 +228,27 @@ void UsbExchangeModule::activate()
     {
         logErrorP("create file failed");
     }
+    writeSupportFile(vol);
     _blockDevice->syncDevice();
 
     logIndentDown();
     openknx.progLed.off();
     _status = true;
+}
+
+void UsbExchangeModule::writeSupportFile(FatVolume& vol)
+{
+    FatFile file = vol.open("/Support.txt", O_WRITE | O_TRUNC | O_CREAT);
+    writeLineToFile(file, "= Versions =");
+    writeLineToFile(file, "Firmware: %s", openknx.info.humanFirmwareVersion(true));
+    writeLineToFile(file, "KNX: %s", KNX_Version);
+    writeLineToFile(file, "%s: %s", openknx.common.logPrefix(), MODULE_Common_Version);
+    for (uint8_t i = 0; i < openknx.modules.count; i++)
+    {
+        if (openknx.modules.list[i]->version().empty()) continue;
+        writeLineToFile(file, "%s: %s", openknx.modules.list[i]->name().c_str(), openknx.modules.list[i]->version().c_str());
+    }
+    file.close();
 }
 
 UsbExchangeModule openknxUsbExchangeModule;

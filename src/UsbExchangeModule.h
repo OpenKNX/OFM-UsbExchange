@@ -31,6 +31,8 @@ class UsbExchangeModule : public OpenKNX::Module
     VirtualBlockDevice* _blockDevice = nullptr;
     OpenKNX::Flash::Driver _flash;
     OpenKNX::Log::VirtualSerial* _loggerFat = nullptr;
+
+    void writeSupportFile(FatVolume& vol);
 };
 
 extern UsbExchangeModule openknxUsbExchangeModule;
