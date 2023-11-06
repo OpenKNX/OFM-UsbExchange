@@ -93,6 +93,7 @@ int32_t UsbExchangeModule::mscWrite(uint32_t lba, uint32_t offset, uint8_t* buff
 {
     if (!_status) return -1;
     activity();
+    openknx.common.skipLooptimeWarning();
     if (!_blockDevice->write(lba, offset, size, buffer))
     {
         eject();
@@ -104,6 +105,7 @@ int32_t UsbExchangeModule::mscWrite(uint32_t lba, uint32_t offset, uint8_t* buff
 void UsbExchangeModule::mscFlush()
 {
     activity();
+    openknx.common.skipLooptimeWarning();
     _blockDevice->syncDevice();
 }
 
@@ -138,7 +140,7 @@ void UsbExchangeModule::setup(bool configured)
     logIndentUp();
 
     _flash.init("Exchange", EXCHANGE_FLASH_OFFSET, EXCHANGE_FLASH_SIZE);
-    _loggerFat = new OpenKNX::Log::VirtualSerial("Fat<Exchange>", 100);
+    _logger = new OpenKNX::Log::VirtualSerial("UsbExchange", 100);
 
     _blockDevice = new VirtualBlockDevice("Exchange", &_flash, EXCHANGE_FS_SIZE);
     logIndentDown();
@@ -146,6 +148,25 @@ void UsbExchangeModule::setup(bool configured)
     openknx.progButton.onDoubleClick([]() -> void {
         openknxUsbExchangeModule.toggle();
     });
+
+    onLoad("Readme.txt", openknxUsbExchangeModule.fillReadmeFile);
+    onLoad("Support.txt", openknxUsbExchangeModule.fillSupportFile);
+    onLoad("Flash.txt", openknxUsbExchangeModule.fillFlashFile);
+}
+
+void UsbExchangeModule::fillReadmeFile(UsbExchangeFile* file)
+{
+    file->write("Bla");
+}
+
+void UsbExchangeModule::fillSupportFile(UsbExchangeFile* file)
+{
+    file->write("Bla");
+}
+
+void UsbExchangeModule::fillFlashFile(UsbExchangeFile* file)
+{
+    file->write("Bla");
 }
 
 void UsbExchangeModule::loop(bool configured)
@@ -185,15 +206,6 @@ void UsbExchangeModule::eject()
 
     _ejecting = 1;
     _status = false;
-    // _blockDevice->syncDevice();
-    // logIndentUp();
-    // logInfoP("copy files");
-    // FatVolume vol;
-    // vol.begin(_blockDevice);
-    // vol.ls(_loggerFat);
-    // logIndentDown();
-    // openknx.progLed.off();
-    // _status = false;
 }
 
 void UsbExchangeModule::load()
@@ -203,36 +215,6 @@ void UsbExchangeModule::load()
     if (_ejecting) return;
     _loading = 1;
     _status = true;
-
-    // logIndentUp();
-    // logInfoP("format");
-    // logIndentUp();
-
-    // // format
-    // FatFormatter formatter;
-    // uint8_t sectorBuffer[512] = {};
-    // formatter.format(_blockDevice, (uint8_t*)sectorBuffer, _loggerFat);
-    // logInfoP("format");
-
-    // logIndentDown();
-    // logInfoP("create info files");
-    // FatVolume vol;
-    // vol.begin(_blockDevice);
-    // FatFile file = vol.open("/Readme.txt", O_WRITE | O_TRUNC | O_CREAT);
-    // if (file)
-    // {
-    //     file.write("Test bla bla");
-    //     file.close();
-    // }
-    // else
-    // {
-    //     logErrorP("create file failed");
-    // }
-    // writeSupportFile(vol);
-    // _blockDevice->syncDevice();
-
-    // logIndentDown();
-    // _status = true;
 
     openknx.progLed.activity(_activity);
 }
@@ -254,33 +236,99 @@ void UsbExchangeModule::writeSupportFile(FatVolume& vol)
 
 void UsbExchangeModule::onLoad(std::string filename, FileOnLoadCallback callback)
 {
-    _filesOnLoad.insert({filename, callback});
+    _filesOnLoad.push_back(std::make_pair(filename, callback));
 }
 
-void UsbExchangeModule::onEject(std::string filename, FileOnLoadCallback callback)
+void UsbExchangeModule::onEject(std::string filename, FileOnEjectCallback callback)
 {
-    _filesOnEject.insert({filename, callback});
+    _filesOnEject.push_back(std::make_pair(filename, callback));
 }
 
 void UsbExchangeModule::processEjecting()
 {
     if (!_ejecting) return;
     if (_ejecting == 1) logInfoP("Ejecting usb storage");
+    if (_ejecting > 0) openknx.common.skipLooptimeWarning();
     logIndentUp();
+
+    const uint8_t shiftCallback = 3;
 
     if (_ejecting == 1)
     {
         openknx.progLed.pulsing();
+
+        _vol.begin(_blockDevice);
+        logInfoP("Show files");
+        logIndentUp();
+        _vol.ls(_logger);
+        logIndentDown();
         _ready = false;
+        _ejectingError = false;
     }
     else if (_ejecting == 2)
     {
-        logInfoP("Copy files");
-        _vol.begin(_blockDevice);
+        // TODO Optimize over multple loops
+        // TODO Directory support
+        FatFile dir = _vol.open("/Inbox");
+        if (dir && dir.isDir())
+        {
+            logInfoP("Copy inbox: /Inbox");
+            FatFile source;
+            while (source.openNext(&dir, O_RDONLY))
+            {
+                if (source.isFile())
+                {
+                    size_t len = 0;
+                    char buf[512] = {'/'};
+
+                    source.getName(buf + 1, 50);
+                    logInfoP("... %s", buf);
+
+                    File target = LittleFS.open(buf, "w");
+                    if (target)
+                    {
+                        while (len = source.read(buf, 512))
+                            target.write(buf, len);
+
+                        target.close();
+                    }
+                    else
+                    {
+                        _ejectingError = true;
+                    }
+                    source.close();
+                }
+            }
+        }
+    }
+    else if (_ejecting >= shiftCallback && _ejecting < shiftCallback + _filesOnEject.size())
+    {
+        auto entry = _filesOnEject[_ejecting - shiftCallback];
+
+        UsbExchangeFile file = _vol.open(entry.first.c_str(), O_READ);
+        if (file)
+        {
+            logInfoP("Read file: %s", entry.first.c_str());
+            logIndentUp();
+            _ejectingError |= !entry.second(&file);
+            logIndentDown();
+            file.close();
+        }
+        else
+        {
+            logInfoP("File not found: %s", entry.first.c_str());
+            logIndentUp();
+            _ejectingError |= !entry.second(nullptr);
+            logIndentDown();
+        }
     }
     else
     {
-        logInfoP("Ejecting completed");
+        if (_ejectingError)
+            logErrorP("Ejecting completed with errors!");
+        else
+            logInfoP("Ejecting completed");
+
         openknx.progLed.off();
         _ejecting = 0;
         goto Done;
@@ -295,7 +343,10 @@ void UsbExchangeModule::processLoading()
 {
     if (!_loading) return;
     if (_loading == 1) logInfoP("Load usb storage");
+    if (_loading > 0) openknx.common.skipLooptimeWarning();
     logIndentUp();
+
+    const uint8_t shiftCallback = 2;
 
     if (_loading == 1)
     {
@@ -303,17 +354,35 @@ void UsbExchangeModule::processLoading()
         logInfoP("Start formatting");
         logIndentUp();
         doFormat();
+        _vol.begin(_blockDevice);
+        _vol.mkdir("/Inbox");
         logIndentDown();
     }
-    else if (_loading == 2)
+    else if (_loading >= shiftCallback && _loading < shiftCallback + _filesOnLoad.size())
     {
-        logInfoP("Copy files");
+        auto entry = _filesOnLoad[_loading - shiftCallback];
+        logInfoP("Create file: %s", entry.first.c_str());
+
+        logIndentUp();
+        UsbExchangeFile file = _vol.open(entry.first.c_str(), O_WRITE | O_TRUNC | O_CREAT);
+        if (file)
+        {
+            entry.second(&file);
+            file.close();
+        }
+        else
+        {
+            entry.second(nullptr);
+        }
+        logIndentDown();
     }
     else
     {
         _loading = 0;
         _ready = true;
+        _blockDevice->syncDevice();
         logInfoP("Loading completed");
+        openknx.progLed.off();
         goto Done;
     }
 
@@ -326,7 +395,7 @@ void UsbExchangeModule::doFormat()
 {
     FatFormatter formatter;
     uint8_t sectorBuffer[512] = {};
-    formatter.format(_blockDevice, (uint8_t*)sectorBuffer, _loggerFat);
+    formatter.format(_blockDevice, (uint8_t*)sectorBuffer, _logger);
 }
 
 UsbExchangeModule openknxUsbExchangeModule;
