@@ -12,6 +12,10 @@ VirtualBlockDevice::VirtualBlockDevice(std::string id, OpenKNX::Flash::Driver* f
 VirtualBlockDevice::~VirtualBlockDevice()
 {
 }
+void VirtualBlockDevice::clearSectorMap()
+{
+    _sectorMap = {};
+}
 
 std::string VirtualBlockDevice::logPrefix()
 {

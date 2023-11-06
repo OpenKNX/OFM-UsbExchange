@@ -27,6 +27,7 @@ class VirtualBlockDevice : public BlockDevice
     bool write(uint32_t sector, uint32_t offset, uint32_t size, const uint8_t* src);
     inline uint32_t flashSectorCount() { return (_flash->size() / 512); }
     std::string logPrefix();
+    void clearSectorMap();
 
   private:
     uint32_t _sectorCount = 0;

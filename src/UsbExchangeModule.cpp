@@ -272,30 +272,33 @@ void UsbExchangeModule::processEjecting()
         FatFile dir = _vol.open("/Inbox");
         if (dir && dir.isDir())
         {
-            logInfoP("Copy inbox: /Inbox");
+            logInfoP("Copy inbox to internal flash");
             FatFile source;
             while (source.openNext(&dir, O_RDONLY))
             {
                 if (source.isFile())
                 {
+                    logIndentUp();
                     size_t len = 0;
                     char buf[512] = {'/'};
 
                     source.getName(buf + 1, 50);
-                    logInfoP("... %s", buf);
-
                     File target = LittleFS.open(buf, "w");
                     if (target)
                     {
+                        logInfoP("copy %s", buf);
                         while (len = source.read(buf, 512))
                             target.write(buf, len);
-
+                            
                         target.close();
                     }
                     else
                     {
+                        logErrorP("%s was not copied", buf);
                         _ejectingError = true;
                     }
+
+                    logIndentDown();
                     source.close();
                 }
             }
@@ -395,6 +398,7 @@ void UsbExchangeModule::doFormat()
 {
     FatFormatter formatter;
     uint8_t sectorBuffer[512] = {};
+    _blockDevice->clearSectorMap();
     formatter.format(_blockDevice, (uint8_t*)sectorBuffer, _logger);
 }
 
