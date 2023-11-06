@@ -247,14 +247,13 @@ void UsbExchangeModule::processEjecting()
     if (!_ejecting) return;
     if (_ejecting == 1) logInfoP("Ejecting usb storage");
     if (_ejecting > 0) openknx.common.skipLooptimeWarning();
+    activity();
     logIndentUp();
 
     const uint8_t shiftCallback = 3;
 
     if (_ejecting == 1)
     {
-        openknx.progLed.pulsing();
-
         _vol.begin(_blockDevice);
         logInfoP("Show files");
         logIndentUp();
@@ -286,7 +285,11 @@ void UsbExchangeModule::processEjecting()
                     {
                         logInfoP("copy %s", buf);
                         while (len = source.read(buf, 512))
+                        {
+                            activity();
+                            openknx.progLed.debugLoop();
                             target.write(buf, len);
+                        }
 
                         target.close();
                     }
@@ -345,13 +348,14 @@ void UsbExchangeModule::processLoading()
     if (!_loading) return;
     if (_loading == 1) logInfoP("Load usb storage");
     if (_loading > 0) openknx.common.skipLooptimeWarning();
+    activity();
     logIndentUp();
 
     const uint8_t shiftCallback = 2;
 
     if (_loading == 1)
     {
-        openknx.progLed.pulsing();
+        openknx.progLed.activity(_activity, true);
         logInfoP("Start formatting");
         logIndentUp();
         doFormat();
@@ -383,7 +387,6 @@ void UsbExchangeModule::processLoading()
         _ready = true;
         _blockDevice->syncDevice();
         logInfoP("Loading completed");
-        openknx.progLed.activity(_activity);
         goto Done;
     }
 
