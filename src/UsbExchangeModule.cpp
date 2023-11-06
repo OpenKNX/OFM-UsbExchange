@@ -215,8 +215,6 @@ void UsbExchangeModule::load()
     if (_ejecting) return;
     _loading = 1;
     _status = true;
-
-    openknx.progLed.activity(_activity);
 }
 
 void UsbExchangeModule::writeSupportFile(FatVolume& vol)
@@ -260,7 +258,7 @@ void UsbExchangeModule::processEjecting()
         _vol.begin(_blockDevice);
         logInfoP("Show files");
         logIndentUp();
-        _vol.ls(_logger);
+        _vol.ls(_logger, LS_SIZE | LS_R);
         logIndentDown();
         _ready = false;
         _ejectingError = false;
@@ -289,7 +287,7 @@ void UsbExchangeModule::processEjecting()
                         logInfoP("copy %s", buf);
                         while (len = source.read(buf, 512))
                             target.write(buf, len);
-                            
+
                         target.close();
                     }
                     else
@@ -385,7 +383,7 @@ void UsbExchangeModule::processLoading()
         _ready = true;
         _blockDevice->syncDevice();
         logInfoP("Loading completed");
-        openknx.progLed.off();
+        openknx.progLed.activity(_activity);
         goto Done;
     }
 
