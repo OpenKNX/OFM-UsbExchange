@@ -3,15 +3,15 @@
 #include "class/msc/msc.h"
 #include "class/msc/msc_device.h"
 
-void writeLineToFile(FatFile file, const char* line, ...)
+void writeLineToFile(FatFile* file, const char* line, ...)
 {
     char buf[100];
     memset(buf, 0x0, 100);
     va_list values;
     va_start(values, line);
     vsnprintf(buf, 100, line, values);
-    file.write(buf);
-    file.write("\n\r");
+    file->write(buf);
+    file->write("\r\n");
     va_end(values);
 }
 
@@ -161,7 +161,40 @@ void UsbExchangeModule::fillReadmeFile(UsbExchangeFile* file)
 
 void UsbExchangeModule::fillSupportFile(UsbExchangeFile* file)
 {
-    file->write("Bla");
+    writeLineToFile(file, "KNX Address: %s", openknx.info.humanIndividualAddress().c_str());
+    writeLineToFile(file, "Application (ETS):");
+    writeLineToFile(file, "  Number: %s", openknx.info.humanApplicationNumber().c_str());
+    writeLineToFile(file, "  Version: %s",  openknx.info.humanApplicationVersion().c_str());
+    writeLineToFile(file, "  Configured: %i", knx.configured());
+    writeLineToFile(file, "Firmware:");
+    writeLineToFile(file, "  Number: %s", openknx.info.humanFirmwareNumber().c_str());
+    writeLineToFile(file, "  Version: %s", openknx.info.humanFirmwareVersion().c_str());
+    writeLineToFile(file, "  Name: %s", MAIN_OrderNumber);
+    writeLineToFile(file, "Hardware:");
+#ifdef HARDWARE_NAME
+    writeLineToFile(file, "  Board: %s", HARDWARE_NAME);
+#endif
+    writeLineToFile(file, "  Serial number: %s", openknx.info.humanSerialNumber().c_str());
+#ifdef OPENKNX_DUALCORE
+    const char* cpuMode = openknx.usesDualCore() ? "Dual-Core" : "Single-Core";
+#else
+    const char* cpuMode = "Single-Core";
+#endif
+    writeLineToFile(file, "  CPU-Mode: %s", cpuMode);
+
+    writeLineToFile(file, "  Free Memory");
+    writeLineToFile(file, "    Current: %.3f KiB", ((float)freeMemory() / 1024));
+    writeLineToFile(file, "    Minimum: %.3f KiB", ((float)openknx.common.freeMemoryMin() / 1024));
+
+    writeLineToFile(file, "Versions:");
+    writeLineToFile(file, "  Firmware: %s", openknx.info.humanFirmwareVersion(true).c_str());
+    writeLineToFile(file, "  KNX: %s", KNX_Version);
+    writeLineToFile(file, "  %s: %s", openknx.common.logPrefix().c_str(), MODULE_Common_Version);
+    for (uint8_t i = 0; i < openknx.modules.count; i++)
+    {
+        if (openknx.modules.list[i]->version().empty()) continue;
+        writeLineToFile(file, "  %s: %s", openknx.modules.list[i]->name().c_str(), openknx.modules.list[i]->version().c_str());
+    }
 }
 
 void UsbExchangeModule::fillFlashFile(UsbExchangeFile* file)
@@ -222,21 +255,6 @@ void UsbExchangeModule::load()
     if (_ejecting) return;
     _loading = 1;
     _status = true;
-}
-
-void UsbExchangeModule::writeSupportFile(FatVolume& vol)
-{
-    FatFile file = vol.open("/Support.txt", O_WRITE | O_TRUNC | O_CREAT);
-    writeLineToFile(file, "= Versions =");
-    writeLineToFile(file, "Firmware: %s", openknx.info.humanFirmwareVersion(true));
-    writeLineToFile(file, "KNX: %s", KNX_Version);
-    writeLineToFile(file, "%s: %s", openknx.common.logPrefix(), MODULE_Common_Version);
-    for (uint8_t i = 0; i < openknx.modules.count; i++)
-    {
-        if (openknx.modules.list[i]->version().empty()) continue;
-        writeLineToFile(file, "%s: %s", openknx.modules.list[i]->name().c_str(), openknx.modules.list[i]->version().c_str());
-    }
-    file.close();
 }
 
 void UsbExchangeModule::onLoad(std::string filename, FileOnLoadCallback callback)

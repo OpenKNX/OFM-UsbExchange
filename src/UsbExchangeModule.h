@@ -52,7 +52,6 @@ class UsbExchangeModule : public OpenKNX::Module
     std::vector<std::pair<std::string, FileOnLoadCallback>> _filesOnLoad;
     std::vector<std::pair<std::string, FileOnEjectCallback>> _filesOnEject;
 
-    void writeSupportFile(FatVolume& vol);
     void doFormat();
 };
 

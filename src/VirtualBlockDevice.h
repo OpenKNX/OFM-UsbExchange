@@ -1,12 +1,6 @@
 #pragma once
-#include "ExFatLib/ExFatLib.h"
-#include "FatLib/FatFormatter.h"
-#include "FatLib/FatLib.h"
-#include "FatLib/FatPartition.h"
-#include "FsLib/FsLib.h"
-#include "OpenKNX.h"
 #include "SDFS.h"
-#include "SdCard/SdCard.h"
+#include "OpenKNX.h"
 #include "common/BlockDevice.h"
 #include <string>
 
