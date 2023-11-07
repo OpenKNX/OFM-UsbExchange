@@ -171,6 +171,13 @@ void UsbExchangeModule::fillFlashFile(UsbExchangeFile* file)
 
 void UsbExchangeModule::loop(bool configured)
 {
+
+    if (_status || _loading || _ejecting)
+    {
+        // disable progmode during usb mode
+        knx.progMode(false);
+    }
+
     processLoading();
     processEjecting();
 }
