@@ -30,6 +30,7 @@ class UsbExchangeModule : public OpenKNX::Module
     static void fillReadmeFile(UsbExchangeFile* file);
     static void fillSupportFile(UsbExchangeFile* file);
     static void fillFlashFile(UsbExchangeFile* file);
+    static void fillFlashFileDirectoryEntries(UsbExchangeFile* file, std::string path = "/");
 
     bool mscReady();
     void mscFlush();

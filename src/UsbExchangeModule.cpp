@@ -3,13 +3,15 @@
 #include "class/msc/msc.h"
 #include "class/msc/msc_device.h"
 
+#include "LittleFS.h"
+
 void writeLineToFile(FatFile* file, const char* line, ...)
 {
-    char buf[100];
-    memset(buf, 0x0, 100);
+    char buf[120];
+    memset(buf, 0x0, 120);
     va_list values;
     va_start(values, line);
-    vsnprintf(buf, 100, line, values);
+    vsnprintf(buf, 120, line, values);
     file->write(buf);
     file->write("\r\n");
     va_end(values);
@@ -156,15 +158,27 @@ void UsbExchangeModule::setup(bool configured)
 
 void UsbExchangeModule::fillReadmeFile(UsbExchangeFile* file)
 {
-    file->write("Bla");
+    writeLineToFile(file, "OpenKNX Virtuelles Laufwerk ");
+    writeLineToFile(file, "------------------------------");
+    writeLineToFile(file, "");
+    writeLineToFile(file, "Dieses virtuelle Laufwerk ermöglicht das Übertragen von Dateien auf den internen Speicher des ");
+    writeLineToFile(file, "OpenKNX Device. Dazu werden die gewünschten Dateien (ohne Unterordner) in Inbox kopiert. Nach ");
+    writeLineToFile(file, "Größe des virtuellen Laufwerks nur %.3f KiB beträgt. Bei Überschreitung des vorhandenen Speichers,", ((float)EXCHANGE_FLASH_SIZE / 1024 / 1024));
+    writeLineToFile(file, "wird das Laufwerk automatisch ausgeworfen und die Dateiübertragung abgebrochen. Auch die ");
+    writeLineToFile(file, "dem Auswerfen werden diese automatisch auf den internen Speicher umkopiert. Beachte, dass die ");
+    writeLineToFile(file, "unvollständige Datei wird im Anschluss umkopiert. Außerdem werden vorhanden Dateien immer ");
+    writeLineToFile(file, "durch die Inbox überschrieben.");
 }
 
 void UsbExchangeModule::fillSupportFile(UsbExchangeFile* file)
 {
+    writeLineToFile(file, "OpenKNX Support File");
+    writeLineToFile(file, "-----------------------");
+    writeLineToFile(file, "");
     writeLineToFile(file, "KNX Address: %s", openknx.info.humanIndividualAddress().c_str());
     writeLineToFile(file, "Application (ETS):");
     writeLineToFile(file, "  Number: %s", openknx.info.humanApplicationNumber().c_str());
-    writeLineToFile(file, "  Version: %s",  openknx.info.humanApplicationVersion().c_str());
+    writeLineToFile(file, "  Version: %s", openknx.info.humanApplicationVersion().c_str());
     writeLineToFile(file, "  Configured: %i", knx.configured());
     writeLineToFile(file, "Firmware:");
     writeLineToFile(file, "  Number: %s", openknx.info.humanFirmwareNumber().c_str());
@@ -199,7 +213,24 @@ void UsbExchangeModule::fillSupportFile(UsbExchangeFile* file)
 
 void UsbExchangeModule::fillFlashFile(UsbExchangeFile* file)
 {
-    file->write("Bla");
+    writeLineToFile(file, "OpenKNX Filesystem");
+    writeLineToFile(file, "---------------------");
+    writeLineToFile(file, "");
+    fillFlashFileDirectoryEntries(file, "/");
+}
+
+void UsbExchangeModule::fillFlashFileDirectoryEntries(UsbExchangeFile* file, std::string path)
+{
+    writeLineToFile(file, path.c_str());
+    Dir directory = LittleFS.openDir(path.c_str());
+    while (directory.next())
+    {
+        std::string full = path + directory.fileName().c_str();
+        if (!directory.isDirectory())
+            writeLineToFile(file, "%s  (%.3f KB)", full.c_str(), (float)directory.fileSize() / 1000UL);
+        else
+            fillFlashFileDirectoryEntries(file, full + "/");
+    }
 }
 
 void UsbExchangeModule::loop(bool configured)
