@@ -147,13 +147,11 @@ void UsbExchangeModule::setup(bool configured)
     _blockDevice = new VirtualBlockDevice("Exchange", &_flash, EXCHANGE_FS_SIZE);
     logIndentDown();
 
-    openknx.progButton.onDoubleClick([]() -> void {
-        openknxUsbExchangeModule.toggle();
-    });
+    openknx.progButton.onDoubleClick([this] { this->toggle(); });
 
-    onLoad("Readme.txt", openknxUsbExchangeModule.fillReadmeFile);
-    onLoad("Support.txt", openknxUsbExchangeModule.fillSupportFile);
-    onLoad("Flash.txt", openknxUsbExchangeModule.fillFlashFile);
+    onLoad("Readme.txt", [this](UsbExchangeFile* file) { this->fillReadmeFile(file); });
+    onLoad("Support.txt", [this](UsbExchangeFile* file) { this->fillSupportFile(file); });
+    onLoad("Flash.txt", [this](UsbExchangeFile* file) { this->fillFlashFile(file); });
 }
 
 void UsbExchangeModule::fillReadmeFile(UsbExchangeFile* file)
