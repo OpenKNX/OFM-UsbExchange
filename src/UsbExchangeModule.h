@@ -8,6 +8,9 @@ typedef FatFile UsbExchangeFile;
 typedef std::function<void(UsbExchangeFile*)> FileOnLoadCallback;
 typedef std::function<bool(UsbExchangeFile*)> FileOnEjectCallback;
 
+// temporary write helper
+void writeLineToFile(FatFile* file, const char* line, ...);
+
 class UsbExchangeModule : public OpenKNX::Module
 {
   public:
