@@ -341,7 +341,9 @@ void UsbExchangeModule::processEjecting()
                         while (len = source.read(buf, 512))
                         {
                             activity();
+#ifdef OPENKNX_HEARTBEAT
                             openknx.progLed.debugLoop();
+#endif
                             target.write(buf, len);
                         }
 
