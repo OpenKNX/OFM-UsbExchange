@@ -2,6 +2,7 @@
 
 #include "class/msc/msc.h"
 #include "class/msc/msc_device.h"
+#include <cctype>
 
 #include "LittleFS.h"
 
@@ -334,6 +335,10 @@ void UsbExchangeModule::processEjecting()
                     char buf[512] = {'/'};
 
                     source.getName(buf + 1, 50);
+                    for (int i = 0; buf[i] != '\0'; ++i)
+                    {
+                        buf[i] = std::toupper(static_cast<unsigned char>(buf[i]));
+                    }
                     File target = LittleFS.open(buf, "w");
                     if (target)
                     {
