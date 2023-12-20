@@ -349,6 +349,9 @@ void UsbExchangeModule::processEjecting()
 #ifdef OPENKNX_HEARTBEAT
                             openknx.progLed.debugLoop();
 #endif
+#ifdef OPENKNX_WATCHDOG
+                            openknx.common.watchdogLoop();
+#endif
                             target.write(buf, len);
                         }
 
