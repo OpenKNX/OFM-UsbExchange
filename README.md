@@ -1,7 +1,5 @@
 # OFM-UsbExchange
 
-> **_Hinweis:_** Das Modul befindet sich noch in der Entwicklungsphase!
-
 Dieses Modul stellt ein virtuelles Laufwerk bereit, ähnlich einem USB-Stick, über welches Dateien auf den internen Speicher übertragen und auch (eingeschränkt) Dateien bereitgestellt werden können. Beachte jedoch, dass die Daten vorübergehend in einem abgetrennten Flash-Bereich zwischengespeichert werden müssen und der damit verfügbare LittleFS-Speicher begrenzt ist.
 
 Um den virtuellen Speicher zu startet, muss der Benutzer die Prog-Taste doppelt drücken. Daraufhin  wird der Speicher eingerichtet, als FAT16 formatiert und das Dateisystem wie folgt vorbefüllt:
