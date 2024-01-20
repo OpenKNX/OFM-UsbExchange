@@ -6,6 +6,10 @@
 
 #include "LittleFS.h"
 
+#ifdef OPENKNX_DEBUGGER
+    #pragma message "Disable USB exchange because OPENKNX_DEBUGGER is defined"
+#endif
+
 void writeLineToFile(FatFile* file, const char* line, ...)
 {
     char buf[120];
@@ -17,6 +21,8 @@ void writeLineToFile(FatFile* file, const char* line, ...)
     file->write("\r\n");
     va_end(values);
 }
+
+#ifndef OPENKNX_DEBUGGER
 
 // Activate
 void __USBInstallMassStorage() {}
@@ -83,6 +89,8 @@ void tud_msc_write10_complete_cb(uint8_t lun)
 {
     if (lun == 0) openknxUsbExchangeModule.mscFlush();
 }
+
+#endif
 
 int32_t UsbExchangeModule::mscRead(uint32_t lba, uint32_t offset, uint8_t* buffer, uint32_t size)
 {
@@ -262,29 +270,37 @@ bool UsbExchangeModule::processCommand(const std::string cmd, bool diagnoseKo)
 
 void UsbExchangeModule::toggle()
 {
+#ifndef OPENKNX_DEBUGGER
     if (_loading) return;
     if (_ejecting) return;
 
     _status ? eject() : load();
+#else
+    logErrorP("USB Exchange is disabled because OPENKNX_DEBUGGER");
+#endif
 }
 
 void UsbExchangeModule::eject()
 {
+#ifndef OPENKNX_DEBUGGER
     if (!_status) return;
     if (_loading) return;
     if (_ejecting) return;
 
     _ejecting = 1;
     _status = false;
+#endif
 }
 
 void UsbExchangeModule::load()
 {
+#ifndef OPENKNX_DEBUGGER
     if (_status) return;
     if (_loading) return;
     if (_ejecting) return;
     _loading = 1;
     _status = true;
+#endif
 }
 
 void UsbExchangeModule::onLoad(std::string filename, FileOnLoadCallback callback)
