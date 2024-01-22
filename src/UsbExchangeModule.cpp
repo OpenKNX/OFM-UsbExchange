@@ -147,6 +147,7 @@ const std::string UsbExchangeModule::version()
 
 void UsbExchangeModule::setup(bool configured)
 {
+#ifndef OPENKNX_DEBUGGER
     logInfoP("Inizialize usb exchange flash");
     logIndentUp();
 
@@ -155,6 +156,7 @@ void UsbExchangeModule::setup(bool configured)
 
     _blockDevice = new VirtualBlockDevice("Exchange", &_flash, EXCHANGE_FS_SIZE);
     logIndentDown();
+#endif
 
     openknx.progButton.onDoubleClick([this] { this->toggle(); });
 
@@ -242,7 +244,7 @@ void UsbExchangeModule::fillFlashFileDirectoryEntries(UsbExchangeFile* file, std
 
 void UsbExchangeModule::loop(bool configured)
 {
-
+#ifndef OPENKNX_DEBUGGER
     if (_status || _loading || _ejecting)
     {
         // disable progmode during usb mode
@@ -251,6 +253,7 @@ void UsbExchangeModule::loop(bool configured)
 
     processLoading();
     processEjecting();
+#endif
 }
 
 void UsbExchangeModule::activity()
@@ -335,7 +338,7 @@ void UsbExchangeModule::processEjecting()
     }
     else if (_ejecting == 2)
     {
-        // TODO Optimize over multple loops
+        // TODO Optimize over multiple loops
         // TODO Directory support
         FatFile dir = _vol.open("/Inbox");
         if (dir && dir.isDir())
