@@ -484,4 +484,9 @@ void UsbExchangeModule::doFormat()
     formatter.format(_blockDevice, (uint8_t*)sectorBuffer, _logger);
 }
 
+void UsbExchangeModule::showHelp()
+{
+    openknx.console.printHelpLine("exchange", "Toggle USB exchange mode");
+}
+
 UsbExchangeModule openknxUsbExchangeModule;

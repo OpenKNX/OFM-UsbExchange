@@ -18,6 +18,7 @@ class UsbExchangeModule : public OpenKNX::Module
     const std::string version() override;
     void loop(bool configured) override;
     void setup(bool configured) override;
+    void showHelp() override;
     bool processCommand(const std::string cmd, bool diagnoseKo);
     void processEjecting();
     void processLoading();
