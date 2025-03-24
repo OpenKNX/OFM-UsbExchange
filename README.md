@@ -94,5 +94,7 @@ Eine Anpassung ist bei Verwendung der Vorlage in der Regel nicht notwendig.
 | Variante             | System | USB Exchange | Internes Dateisystem |
 | -------------------- | -----: | -----------: | -------------------: |
 | RP2040_EXCHANGE_2MB  |  1 MiB |      256 KiB |          ca. 768 KiB |
+| RP2040_EXCHANGE_4MB  |  1 MiB |      512 KiB |          ca. 2,5 MiB |
+| RP2040_EXCHANGE_8MB  |  1 MiB |      768 KiB |         ca. 6,25 MiB |
 | RP2040_EXCHANGE_16MB |  1 MiB |        1 MiB |           ca. 14 MiB |
 
