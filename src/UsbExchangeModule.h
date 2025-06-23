@@ -1,4 +1,5 @@
 #pragma once
+#ifndef OPENKNX_USB_EXCHANGE_IGNORE
 #include "OpenKNX.h"
 #include "VirtualBlockDevice.h"
 #include "common/SysCall.h"
@@ -61,3 +62,4 @@ class UsbExchangeModule : public OpenKNX::Module
 };
 
 extern UsbExchangeModule openknxUsbExchangeModule;
+#endif

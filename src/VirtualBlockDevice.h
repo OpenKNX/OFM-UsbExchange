@@ -1,4 +1,5 @@
 #pragma once
+#ifndef OPENKNX_USB_EXCHANGE_IGNORE
 #include "OpenKNX.h"
 #include "SDFS.h"
 #if (ARDUINO_PICO_MAJOR * 10000 + ARDUINO_PICO_MINOR * 100 + ARDUINO_PICO_REVISION < 30703) && !defined(ARDUINO_PICO_MASTER)
@@ -39,3 +40,4 @@ class VirtualBlockDevice : public FsBlockDevice
     std::unordered_map<uint32_t, uint32_t> _sectorMap = {};
     uint32_t _sectorCurrent = 0;
 };
+#endif
