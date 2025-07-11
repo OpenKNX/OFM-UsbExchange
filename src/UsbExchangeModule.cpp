@@ -1,15 +1,15 @@
 #ifndef OPENKNX_USB_EXCHANGE_IGNORE
-#include "UsbExchangeModule.h"
+    #include "UsbExchangeModule.h"
 
-#include "class/msc/msc.h"
-#include "class/msc/msc_device.h"
-#include <cctype>
+    #include "class/msc/msc.h"
+    #include "class/msc/msc_device.h"
+    #include <cctype>
 
-#include "LittleFS.h"
+    #include "LittleFS.h"
 
-#ifdef OPENKNX_DEBUGGER
-    #pragma message "Disable USB exchange because OPENKNX_DEBUGGER is defined"
-#endif
+    #ifdef OPENKNX_DEBUGGER
+        #pragma message "Disable USB exchange because OPENKNX_DEBUGGER is defined"
+    #endif
 
 void writeLineToFile(FatFile* file, const char* line, ...)
 {
@@ -23,7 +23,7 @@ void writeLineToFile(FatFile* file, const char* line, ...)
     va_end(values);
 }
 
-#ifndef OPENKNX_DEBUGGER
+    #ifndef OPENKNX_DEBUGGER
 
 // Activate
 void __USBInstallMassStorage() {}
@@ -91,7 +91,7 @@ void tud_msc_write10_complete_cb(uint8_t lun)
     if (lun == 0) openknxUsbExchangeModule.mscFlush();
 }
 
-#endif
+    #endif
 
 int32_t UsbExchangeModule::mscRead(uint32_t lba, uint32_t offset, uint8_t* buffer, uint32_t size)
 {
@@ -148,7 +148,7 @@ const std::string UsbExchangeModule::version()
 
 void UsbExchangeModule::setup(bool configured)
 {
-#ifndef OPENKNX_DEBUGGER
+    #ifndef OPENKNX_DEBUGGER
     logInfoP("Inizialize usb exchange flash");
     logIndentUp();
 
@@ -157,7 +157,7 @@ void UsbExchangeModule::setup(bool configured)
 
     _blockDevice = new VirtualBlockDevice("Exchange", &_flash, EXCHANGE_FS_SIZE);
     logIndentDown();
-#endif
+    #endif
 
     openknx.progButton.onDoubleClick([this] { this->toggle(); });
 
@@ -168,16 +168,18 @@ void UsbExchangeModule::setup(bool configured)
 
 void UsbExchangeModule::fillReadmeFile(UsbExchangeFile* file)
 {
-    writeLineToFile(file, "OpenKNX Virtuelles Laufwerk ");
-    writeLineToFile(file, "------------------------------");
+    writeLineToFile(file, "OpenKNX Virtuelles Laufwerk");
+    writeLineToFile(file, "----------------------------");
     writeLineToFile(file, "");
-    writeLineToFile(file, "Dieses virtuelle Laufwerk ermöglicht das Übertragen von Dateien auf den internen Speicher des ");
-    writeLineToFile(file, "OpenKNX Device. Dazu werden die gewünschten Dateien (ohne Unterordner) in Inbox kopiert. Nach ");
-    writeLineToFile(file, "Größe des virtuellen Laufwerks nur %.3f KiB beträgt. Bei Überschreitung des vorhandenen Speichers,", ((float)EXCHANGE_FLASH_SIZE / 1024 / 1024));
-    writeLineToFile(file, "wird das Laufwerk automatisch ausgeworfen und die Dateiübertragung abgebrochen. Auch die ");
-    writeLineToFile(file, "dem Auswerfen werden diese automatisch auf den internen Speicher umkopiert. Beachte, dass die ");
-    writeLineToFile(file, "unvollständige Datei wird im Anschluss umkopiert. Außerdem werden vorhanden Dateien immer ");
-    writeLineToFile(file, "durch die Inbox überschrieben.");
+    writeLineToFile(file, "Dieses virtuelle Laufwerk ermöglicht das Übertragen von Dateien auf den internen Speicher des");
+    writeLineToFile(file, "OpenKNX-Geräts. Dazu werden die gewünschten Dateien (ohne Unterordner) in den Ordner 'Inbox' kopiert.");
+    writeLineToFile(file, "");
+    writeLineToFile(file, "Die Größe des virtuellen Laufwerks beträgt lediglich %.3f KiB. Wird der verfügbare Speicher überschritten,", ((float)EXCHANGE_FLASH_SIZE / 1024));
+    writeLineToFile(file, "wird das Laufwerk automatisch ausgeworfen und die Dateiübertragung abgebrochen.");
+    writeLineToFile(file, "");
+    writeLineToFile(file, "Nach dem Auswerfen werden die erfolgreich übertragenen Dateien automatisch in den internen Speicher kopiert.");
+    writeLineToFile(file, "Unvollständige Dateien werden dabei nicht übernommen. Bereits vorhandene Dateien werden durch Dateien in der");
+    writeLineToFile(file, "'Inbox' überschrieben.");
 }
 
 void UsbExchangeModule::fillSupportFile(UsbExchangeFile* file)
@@ -195,15 +197,15 @@ void UsbExchangeModule::fillSupportFile(UsbExchangeFile* file)
     writeLineToFile(file, "  Version: %s", openknx.info.humanFirmwareVersion().c_str());
     writeLineToFile(file, "  Name: %s", MAIN_OrderNumber);
     writeLineToFile(file, "Hardware:");
-#ifdef HARDWARE_NAME
+    #ifdef HARDWARE_NAME
     writeLineToFile(file, "  Board: %s", HARDWARE_NAME);
-#endif
+    #endif
     writeLineToFile(file, "  Serial number: %s", openknx.info.humanSerialNumber().c_str());
-#ifdef OPENKNX_DUALCORE
+    #ifdef OPENKNX_DUALCORE
     const char* cpuMode = openknx.usesDualCore() ? "Dual-Core" : "Single-Core";
-#else
+    #else
     const char* cpuMode = "Single-Core";
-#endif
+    #endif
     writeLineToFile(file, "  CPU-Mode: %s", cpuMode);
 
     writeLineToFile(file, "  Free Memory");
@@ -245,7 +247,7 @@ void UsbExchangeModule::fillFlashFileDirectoryEntries(UsbExchangeFile* file, std
 
 void UsbExchangeModule::loop(bool configured)
 {
-#ifndef OPENKNX_DEBUGGER
+    #ifndef OPENKNX_DEBUGGER
     if (_status || _loading || _ejecting)
     {
         // disable progmode during usb mode
@@ -254,7 +256,7 @@ void UsbExchangeModule::loop(bool configured)
 
     processLoading();
     processEjecting();
-#endif
+    #endif
 }
 
 void UsbExchangeModule::activity()
@@ -274,37 +276,37 @@ bool UsbExchangeModule::processCommand(const std::string cmd, bool diagnoseKo)
 
 void UsbExchangeModule::toggle()
 {
-#ifndef OPENKNX_DEBUGGER
+    #ifndef OPENKNX_DEBUGGER
     if (_loading) return;
     if (_ejecting) return;
 
     _status ? eject() : load();
-#else
+    #else
     logErrorP("USB Exchange is disabled because OPENKNX_DEBUGGER");
-#endif
+    #endif
 }
 
 void UsbExchangeModule::eject()
 {
-#ifndef OPENKNX_DEBUGGER
+    #ifndef OPENKNX_DEBUGGER
     if (!_status) return;
     if (_loading) return;
     if (_ejecting) return;
 
     _ejecting = 1;
     _status = false;
-#endif
+    #endif
 }
 
 void UsbExchangeModule::load()
 {
-#ifndef OPENKNX_DEBUGGER
+    #ifndef OPENKNX_DEBUGGER
     if (_status) return;
     if (_loading) return;
     if (_ejecting) return;
     _loading = 1;
     _status = true;
-#endif
+    #endif
 }
 
 void UsbExchangeModule::onLoad(std::string filename, FileOnLoadCallback callback)
@@ -366,9 +368,9 @@ void UsbExchangeModule::processEjecting()
                         while (len = source.read(buf, 512))
                         {
                             activity();
-#ifdef OPENKNX_HEARTBEAT
+    #ifdef OPENKNX_HEARTBEAT
                             openknx.progLed.debugLoop();
-#endif
+    #endif
                             openknx.watchdog.loop();
                             target.write(buf, len);
                         }
