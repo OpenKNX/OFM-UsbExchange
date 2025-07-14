@@ -194,7 +194,7 @@ void UsbExchangeModule::fillSupportFile(UsbExchangeFile* file)
     writeLineToFile(file, "  Configured: %i", knx.configured());
     writeLineToFile(file, "Firmware:");
     #ifdef FIRMWARE_NAME
-    writeLineToFile(file, "  Name: %s", FIRMWAMRE_NAME);
+    writeLineToFile(file, "  Name: %s", FIRMWARE_NAME);
     #endif
     writeLineToFile(file, "  Version: %s", openknx.info.humanFirmwareVersion().c_str());
     writeLineToFile(file, "  Number: %s", openknx.info.humanFirmwareNumber().c_str());
