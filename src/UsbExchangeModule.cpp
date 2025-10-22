@@ -11,6 +11,8 @@
         #pragma message "Disable USB exchange because OPENKNX_DEBUGGER is defined"
     #endif
 
+    #define USBD_MSC_EPSIZE 64
+
 void writeLineToFile(FatFile* file, const char* line, ...)
 {
     char buf[120];
@@ -24,11 +26,12 @@ void writeLineToFile(FatFile* file, const char* line, ...)
 }
 
     #ifndef OPENKNX_DEBUGGER
+extern "C" uint8_t tud_msc_get_maxlun_cb(void)
+{
+    return 1;
+}
 
-// Activate
-void __USBInstallMassStorage() {}
-
-void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4])
+extern "C" void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4])
 {
     (void)lun;
 
@@ -41,54 +44,117 @@ void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16
     memcpy(product_rev, rev, strlen(rev));
 }
 
-bool tud_msc_test_unit_ready_cb(uint8_t lun)
+extern "C" bool tud_msc_test_unit_ready_cb(uint8_t lun)
 {
-    if (lun == 0) return openknxUsbExchangeModule.mscReady();
-    return false;
+    (void)lun;
+
+    return openknxUsbExchangeModule.mscReady();
 }
 
-void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_size)
+extern "C" void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_size)
 {
-    if (lun == 0)
+    (void)lun;
+
+    *block_count = EXCHANGE_FS_SIZE / 512;
+    *block_size = 512;
+}
+
+extern "C" bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject)
+{
+    (void)lun;
+
+    return openknxUsbExchangeModule.mscStartStop(power_condition, start, load_eject);
+}
+
+extern "C" bool tud_msc_is_writable_cb(uint8_t lun)
+{
+    (void)lun;
+
+    return true;
+}
+
+extern "C" int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buffer, uint32_t size)
+{
+    (void)lun;
+
+    return openknxUsbExchangeModule.mscRead(lba, offset, (uint8_t*)buffer, size);
+}
+
+extern "C" int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* buffer, uint32_t size)
+{
+    (void)lun;
+
+    return openknxUsbExchangeModule.mscWrite(lba, offset, buffer, size);
+}
+
+extern "C" void tud_msc_write10_complete_cb(uint8_t lun)
+{
+    (void)lun;
+
+    openknxUsbExchangeModule.mscFlush();
+}
+
+extern "C" bool tud_msc_set_sense(uint8_t lun, uint8_t sense_key, uint8_t add_sense_code, uint8_t add_sense_qualifier);
+
+extern "C" int32_t tud_msc_scsi_cb(uint8_t lun, uint8_t const scsi_cmd[16], void* buffer, uint16_t bufsize)
+{
+    const int SCSI_CMD_PREVENT_ALLOW_MEDIUM_REMOVAL = 0x1E;
+    const int SCSI_CMD_START_STOP_UNIT = 0x1B;
+    const int SCSI_SENSE_ILLEGAL_REQUEST = 0x05;
+
+    void const* response = NULL;
+    int32_t resplen = 0;
+
+    // most scsi handled is input
+    bool in_xfer = true;
+    scsi_start_stop_unit_t const* start_stop = (scsi_start_stop_unit_t const*)scsi_cmd;
+    switch (scsi_cmd[0])
     {
-        *block_count = EXCHANGE_FS_SIZE / 512;
-        *block_size = 512;
+        case SCSI_CMD_PREVENT_ALLOW_MEDIUM_REMOVAL:
+            // Host is about to read/write etc ... better not to disconnect disk
+            if (scsi_cmd[4] & 1)
+            {
+            }
+            resplen = 0;
+            break;
+        case SCSI_CMD_START_STOP_UNIT:
+            // Host try to eject/safe remove/poweroff us. We could safely disconnect with disk storage, or go into lower power
+            if (!start_stop->start && start_stop->load_eject)
+            {
+                openknxUsbExchangeModule.eject();
+            }
+            else if (start_stop->start && start_stop->load_eject)
+            {
+            }
+            resplen = 0;
+            break;
+        default:
+            // Set Sense = Invalid Command Operation
+            tud_msc_set_sense(lun, SCSI_SENSE_ILLEGAL_REQUEST, 0x20, 0x00);
+            // negative means error -> tinyusb could stall and/or response with failed status
+            resplen = -1;
+            break;
     }
-}
 
-bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject)
-{
-    if (lun == 0) return openknxUsbExchangeModule.mscStartStop(power_condition, start, load_eject);
-    return false;
-}
-bool tud_msc_is_writable_cb(uint8_t lun)
-{
-    if (lun == 0) return true;
-    return false;
-}
-
-int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buffer, uint32_t size)
-{
-    if (lun == 0)
+    // return resplen must not larger than bufsize
+    if (resplen > bufsize)
     {
-        return openknxUsbExchangeModule.mscRead(lba, offset, (uint8_t*)buffer, size);
+        resplen = bufsize;
     }
 
-    return -1;
-}
-
-int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* buffer, uint32_t size)
-{
-    if (lun == 0)
+    if (response && (resplen > 0))
     {
-        return openknxUsbExchangeModule.mscWrite(lba, offset, buffer, size);
+        if (in_xfer)
+        {
+            memcpy(buffer, response, resplen);
+        }
+        else
+        {
+            // SCSI output
+        }
     }
-    return -1;
-}
 
-void tud_msc_write10_complete_cb(uint8_t lun)
-{
-    if (lun == 0) openknxUsbExchangeModule.mscFlush();
+    return resplen;
 }
 
     #endif
@@ -157,9 +223,9 @@ void UsbExchangeModule::setup(bool configured)
 
     _blockDevice = new VirtualBlockDevice("Exchange", &_flash, EXCHANGE_FS_SIZE);
     logIndentDown();
-    #endif
 
     openknx.progButton.onDoubleClick([this] { this->toggle(); });
+    #endif
 
     onLoad("Readme.txt", [this](UsbExchangeFile* file) { this->fillReadmeFile(file); });
     onLoad("Support.txt", [this](UsbExchangeFile* file) { this->fillSupportFile(file); });
