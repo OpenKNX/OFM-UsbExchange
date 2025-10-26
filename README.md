@@ -53,7 +53,9 @@ Zum Schluss muss das Modul nich über die main.c eingebuden werden
 void setup()
 {
   ...
+#ifndef OPENKNX_USB_EXCHANGE_IGNORE
   openknx.addModule(8, openknxUsbExchangeModule);
+#endif
   ...
 }
 ```
@@ -61,6 +63,7 @@ void setup()
 Darüber hinaus können Callbacks für bestimme Dateien hinterlegt werden:
 
 ```
+#ifndef OPENKNX_USB_EXCHANGE_IGNORE
 openknxUsbExchangeModule.onLoad("Dummy.txt", [](UsbExchangeFile* file) -> void {
     file->write("Demo");
 });
@@ -74,6 +77,7 @@ openknxUsbExchangeModule.onEject("Dummy.txt", [](UsbExchangeFile* file) -> bool 
     }
     return true;
 });
+#endif
 ```
 
 Beim onEject muss beachtet werden, dass der File-Pointer bei nichtvorhandener Datei ein `nullptr` ist. 
@@ -83,11 +87,12 @@ Sollte es beim Verarbeiten der Datei ein Problem geben, kann dies mitels `return
 
 Eine Anpassung ist bei Verwendung der Vorlage in der Regel nicht notwendig.
 
-| Parameter             | Beschreibung                                                                                                          |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| EXCHANGE_FLASH_OFFSET | Wo im Flash sollen die Daten zwischen gespeichert werden                                                              |
-| EXCHANGE_FLASH_SIZE   | Wie groß soll der Bereich werden (Limit wieviele Daten tatsächlich auf dem Laufwerk gepseicher werden könen)          |
-| EXCHANGE_FS_SIZE      | Gibt die Größe des virtuelle Speichers an. Muss min. größer als 6MB sein. Dies ist unabhängig von EXCHANGE_FLASH_SIZE |
+| Parameter                   | Beschreibung                                                                                                          |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| EXCHANGE_FLASH_OFFSET       | Wo im Flash sollen die Daten zwischen gespeichert werden                                                              |
+| EXCHANGE_FLASH_SIZE         | Wie groß soll der Bereich werden (Limit wieviele Daten tatsächlich auf dem Laufwerk gepseicher werden könen)          |
+| EXCHANGE_FS_SIZE            | Gibt die Größe des virtuelle Speichers an. Muss min. größer als 6MB sein. Dies ist unabhängig von EXCHANGE_FLASH_SIZE |
+| OPENKNX_USB_EXCHANGE_IGNORE | Verhindert die Kompilierung des Moduls und kann von anderen Modulen zur Überprüfung genutzt werden.                   |
 
 ### Layouts
 
