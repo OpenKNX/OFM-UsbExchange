@@ -437,7 +437,7 @@ void UsbExchangeModule::processEjecting()
                         {
                             activity();
     #ifdef OPENKNX_HEARTBEAT
-                            openknx.progLed.debugLoop();
+                            openknx.ledFunctions.get(OPENKNX_LEDFUNC_BASE_PROG)->debugLoop();
     #endif
                             openknx.watchdog.loop();
                             target.write(buf, len);
@@ -485,7 +485,7 @@ void UsbExchangeModule::processEjecting()
         else
             logInfoP("Ejecting completed");
 
-        openknx.progLed.off();
+        openknx.ledFunctions.get(OPENKNX_LEDFUNC_BASE_PROG)->off();
         _ejecting = 0;
         goto Done;
     }
@@ -507,7 +507,7 @@ void UsbExchangeModule::processLoading()
 
     if (_loading == 1)
     {
-        openknx.progLed.activity(_activity, true);
+        openknx.ledFunctions.get(OPENKNX_LEDFUNC_BASE_PROG)->activity(_activity, true);
         logInfoP("Start formatting");
         logIndentUp();
         doFormat();
